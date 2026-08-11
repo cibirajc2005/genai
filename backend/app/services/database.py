@@ -28,6 +28,10 @@ class DatabaseConnection:
         return self.raw.execute(self._sql(statement), parameters)
 
     def executemany(self, statement: str, parameters: Any):
+        if self.postgres:
+            cursor = self.raw.cursor()
+            cursor.executemany(self._sql(statement), parameters)
+            return cursor
         return self.raw.executemany(self._sql(statement), parameters)
 
     def executescript(self, script: str):

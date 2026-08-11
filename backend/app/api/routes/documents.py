@@ -23,6 +23,8 @@ router = APIRouter()
 def _document(row) -> DocumentResponse:
     keys = set(row.keys())
     values = {key: row[key] for key in DocumentResponse.model_fields if key in keys}
+    if "id" in values:
+        values["id"] = str(values["id"])
     return DocumentResponse(**values)
 
 
@@ -136,7 +138,7 @@ def _retrieve(question: str, document_ids: list[str]) -> list[dict]:
         semantic = cosine_similarity(query_vectors.get(row["vector_model"], []), json.loads(row["vector"]))
         score = max(0.0, semantic) * .75 + min(keyword, 1.0) * .25
         if score > 0:
-            ranked.append({"row": {"id": row["document_id"], "name": row["name"]}, "text": text, "score": score})
+            ranked.append({"row": {"id": str(row["document_id"]), "name": row["name"]}, "text": text, "score": score})
     return sorted(ranked, key=lambda item: item["score"], reverse=True)[:5]
 
 
