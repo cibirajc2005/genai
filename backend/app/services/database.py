@@ -100,6 +100,41 @@ def initialize_database() -> None:
           document_a_name TEXT NOT NULL, document_b_name TEXT NOT NULL,
           comparison TEXT NOT NULL, configured INTEGER NOT NULL, created_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS document_intelligence (
+          id TEXT PRIMARY KEY, document_id TEXT NOT NULL UNIQUE, summary TEXT NOT NULL,
+          document_type TEXT NOT NULL, topics TEXT NOT NULL, entities TEXT NOT NULL,
+          dates TEXT NOT NULL, obligations TEXT NOT NULL, risks TEXT NOT NULL,
+          action_items TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS document_risks (
+          id TEXT PRIMARY KEY, document_id TEXT NOT NULL, title TEXT NOT NULL,
+          severity TEXT NOT NULL, description TEXT NOT NULL, evidence TEXT NOT NULL,
+          recommendation TEXT NOT NULL, created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS agent_runs (
+          id TEXT PRIMARY KEY, conversation_id TEXT, agent_type TEXT NOT NULL,
+          status TEXT NOT NULL, steps INTEGER NOT NULL, tool_calls INTEGER NOT NULL,
+          retrieval_attempts INTEGER NOT NULL, documents_examined INTEGER NOT NULL,
+          evidence_count INTEGER NOT NULL, critic_score REAL NOT NULL,
+          latency_ms INTEGER NOT NULL, metadata TEXT NOT NULL, created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS ai_reviews (
+          id TEXT PRIMARY KEY, analysis_id TEXT NOT NULL, status TEXT NOT NULL,
+          reviewer_action TEXT NOT NULL, comment TEXT NOT NULL, created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS conversations (
+          id TEXT PRIMARY KEY, name TEXT NOT NULL, summary TEXT NOT NULL, created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS conversation_summaries (
+          id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL, summary TEXT NOT NULL,
+          entities TEXT NOT NULL, selected_documents TEXT NOT NULL, created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS insights (
+          id TEXT PRIMARY KEY, category TEXT NOT NULL, title TEXT NOT NULL,
+          description TEXT NOT NULL, severity TEXT NOT NULL, evidence TEXT NOT NULL,
+          document_id TEXT, created_at TEXT NOT NULL
+        );
         """)
         # Backfill vectors for documents uploaded before chunk storage existed.
         missing = db.execute("""SELECT d.id,d.content,d.created_at FROM documents d

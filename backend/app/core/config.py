@@ -41,6 +41,10 @@ class Settings:
     supabase_storage_bucket: str = os.getenv("SUPABASE_STORAGE_BUCKET", "documents")
     database_path: Path = PROJECT_DIR / "data" / "metadata" / "app.db"
     documents_path: Path = PROJECT_DIR / "data" / "documents"
+    agentic_ai_enabled: bool = os.getenv("AGENTIC_AI_ENABLED", "true").lower() in {"1", "true", "yes"}
+    agent_max_steps: int = min(max(int(os.getenv("AGENT_MAX_STEPS", "8")), 1), 8)
+    agent_max_retrieval_retries: int = min(max(int(os.getenv("AGENT_MAX_RETRIEVAL_RETRIES", "2")), 0), 2)
+    agent_max_tool_calls: int = min(max(int(os.getenv("AGENT_MAX_TOOL_CALLS", "10")), 1), 10)
 
     @property
     def supabase_enabled(self) -> bool:

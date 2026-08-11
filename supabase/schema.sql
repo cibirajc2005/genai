@@ -29,11 +29,54 @@ create table if not exists public.comparisons (
   comparison text not null, configured integer not null, created_at timestamptz not null
 );
 
+create table if not exists public.document_intelligence (
+  id uuid primary key, document_id uuid not null unique references public.documents(id) on delete cascade,
+  summary text not null, document_type text not null, topics jsonb not null default '[]',
+  entities jsonb not null default '[]', dates jsonb not null default '[]',
+  obligations jsonb not null default '[]', risks jsonb not null default '[]',
+  action_items jsonb not null default '[]', created_at timestamptz not null, updated_at timestamptz not null
+);
+create table if not exists public.document_risks (
+  id uuid primary key, document_id uuid not null references public.documents(id) on delete cascade,
+  title text not null, severity text not null, description text not null, evidence text not null,
+  recommendation text not null, created_at timestamptz not null
+);
+create table if not exists public.agent_runs (
+  id uuid primary key, conversation_id uuid, agent_type text not null, status text not null,
+  steps integer not null, tool_calls integer not null, retrieval_attempts integer not null,
+  documents_examined integer not null, evidence_count integer not null, critic_score double precision not null,
+  latency_ms integer not null, metadata jsonb not null default '{}', created_at timestamptz not null
+);
+create table if not exists public.ai_reviews (
+  id uuid primary key, analysis_id uuid not null, status text not null,
+  reviewer_action text not null, comment text not null default '', created_at timestamptz not null
+);
+create table if not exists public.conversations (
+  id uuid primary key, name text not null, summary text not null default '',
+  created_at timestamptz not null, updated_at timestamptz not null
+);
+create table if not exists public.conversation_summaries (
+  id uuid primary key, conversation_id uuid not null, summary text not null,
+  entities jsonb not null default '[]', selected_documents jsonb not null default '[]', created_at timestamptz not null
+);
+create table if not exists public.insights (
+  id uuid primary key, category text not null, title text not null, description text not null,
+  severity text not null, evidence text not null, document_id uuid references public.documents(id) on delete cascade,
+  created_at timestamptz not null
+);
+
 alter table public.documents enable row level security;
 alter table public.chunks enable row level security;
 alter table public.messages enable row level security;
 alter table public.query_logs enable row level security;
 alter table public.comparisons enable row level security;
+alter table public.document_intelligence enable row level security;
+alter table public.document_risks enable row level security;
+alter table public.agent_runs enable row level security;
+alter table public.ai_reviews enable row level security;
+alter table public.conversations enable row level security;
+alter table public.conversation_summaries enable row level security;
+alter table public.insights enable row level security;
 
 -- Private bucket. The FastAPI backend uses the service-role key and bypasses RLS.
 insert into storage.buckets (id, name, public)

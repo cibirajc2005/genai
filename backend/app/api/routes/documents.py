@@ -81,6 +81,13 @@ async def upload_document(file: UploadFile = File(...), department: str = Form("
         ])
         row = db.execute("""SELECT d.*, COUNT(c.id) chunk_count, MAX(c.vector_model) vector_model
             FROM documents d LEFT JOIN chunks c ON c.document_id=d.id WHERE d.id=? GROUP BY d.id""", (document_id,)).fetchone()
+    if settings.agentic_ai_enabled:
+        try:
+            from app.services.document_intelligence import build_profile
+            build_profile(document_id, text, filename, department[:80])
+        except Exception:
+            # Intelligence is optional and must never make a successful upload fail.
+            pass
     return _document(row)
 
 

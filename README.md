@@ -62,6 +62,19 @@ OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 
 Restart the backend after editing this file. Never put a real key in `.env.example` or paste it into chat. If a key is accidentally shared, revoke it immediately and create a replacement.
 
+Optional bounded agent controls:
+
+```dotenv
+AGENTIC_AI_ENABLED=true
+AGENT_MAX_STEPS=8
+AGENT_MAX_RETRIEVAL_RETRIES=2
+AGENT_MAX_TOOL_CALLS=10
+```
+
+Agentic features add research planning, evidence retry and verification, risk analysis,
+executive insights, a knowledge map, safe analytics templates, human review actions,
+and execution observability. Existing chat and document APIs remain unchanged.
+
 ## Store documents and comparisons in Supabase
 
 When all Supabase variables below are present, the backend uses Supabase Postgres
