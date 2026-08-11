@@ -59,11 +59,6 @@ create table if not exists public.conversation_summaries (
   id uuid primary key, conversation_id uuid not null, summary text not null,
   entities jsonb not null default '[]', selected_documents jsonb not null default '[]', created_at timestamptz not null
 );
-create table if not exists public.insights (
-  id uuid primary key, category text not null, title text not null, description text not null,
-  severity text not null, evidence text not null, document_id uuid references public.documents(id) on delete cascade,
-  created_at timestamptz not null
-);
 
 alter table public.documents enable row level security;
 alter table public.chunks enable row level security;
@@ -76,7 +71,6 @@ alter table public.agent_runs enable row level security;
 alter table public.ai_reviews enable row level security;
 alter table public.conversations enable row level security;
 alter table public.conversation_summaries enable row level security;
-alter table public.insights enable row level security;
 
 -- Private bucket. The FastAPI backend uses the service-role key and bypasses RLS.
 insert into storage.buckets (id, name, public)

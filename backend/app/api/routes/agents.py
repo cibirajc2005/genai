@@ -1,47 +1,50 @@
 """Additive agentic, intelligence, memory, review, and insight endpoints."""
 
-import json
 import re
+import time
 import uuid
 from fastapi import APIRouter, HTTPException
-from app.schemas.agents import AnalyzeDocumentRequest, AnalyticsAgentRequest, CompareAgentRequest, ConversationCreate, ConversationRename, ResearchRequest, ResearchResult, ReviewRequest
-from app.services.agents.analytics_agent import answer_analytics
-from app.services.agents.orchestrator import run_research
+from app.schemas.agents import AnalyzeDocumentRequest, CompareAgentRequest, ConversationCreate, ConversationRename, ResearchRequest, ReviewRequest
 from app.services.agents.risk_agent import analyze_risks
 from app.services.agents.retriever_agent import retrieve
 from app.services.database import connection, now_iso
 from app.services.document_intelligence import build_profile, get_profile
+from app.services.agents.execution_store import recent_runs, remember_review
 
 router = APIRouter()
 
 
-@router.post("/agents/research", response_model=ResearchResult, tags=["Agents"])
-def research(request: ResearchRequest) -> ResearchResult:
-    try:
-        return run_research(request.question, request.document_ids, request.conversation_id)
-    except RuntimeError as exc:
-        raise HTTPException(503, str(exc)) from exc
-    except Exception as exc:
-        raise HTTPException(502, "Research agent could not complete safely.") from exc
-
-
-@router.post("/agents/verify-answer", tags=["Agents"])
-def verify_answer(request: ResearchRequest) -> dict:
-    result = run_research(request.question, request.document_ids, request.conversation_id)
-    return {"run_id": result.run_id, "critic": result.critic, "citations": result.evidence}
-
-
 @router.post("/agents/risk-analysis", tags=["Agents"])
 def risk_analysis(request: ResearchRequest) -> dict:
+    started = time.perf_counter()
     evidence = retrieve(request.question, request.document_ids)
     risks = analyze_risks(evidence)
-    with connection() as db:
-        for document_id in request.document_ids:
-            db.execute("DELETE FROM document_risks WHERE document_id=?", (document_id,))
-        for risk in risks:
-            db.execute("INSERT INTO document_risks VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (str(uuid.uuid4()), risk.document_id, risk.title, risk.severity, risk.description,
-                 risk.evidence, risk.recommendation, now_iso()))
+    try:
+        with connection() as db:
+            for document_id in request.document_ids:
+                db.execute("DELETE FROM document_risks WHERE document_id=?", (document_id,))
+            for risk in risks:
+                db.execute("INSERT INTO document_risks VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    (str(uuid.uuid4()), risk.document_id, risk.title, risk.severity, risk.description,
+                     risk.evidence, risk.recommendation, now_iso()))
+    except Exception:
+        pass
+    run = {"id": str(uuid.uuid4()), "conversation_id": request.conversation_id, "agent_type": "risk-analysis",
+        "status": "completed", "steps": 3, "tool_calls": 1, "retrieval_attempts": 1,
+        "documents_examined": len({item["document_id"] for item in evidence}), "evidence_count": len(evidence),
+        "critic_score": round(sum(item["score"] for item in evidence) / max(len(evidence), 1), 3),
+        "latency_ms": int((time.perf_counter() - started) * 1000), "metadata": {}, "created_at": now_iso()}
+    from app.services.agents.execution_store import remember_run
+    remember_run(run)
+    try:
+        with connection() as db:
+            metadata = "{}" if not db.postgres else __import__("psycopg.types.json", fromlist=["Jsonb"]).Jsonb({})
+            db.execute("INSERT INTO agent_runs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (run["id"], run["conversation_id"], run["agent_type"], run["status"], run["steps"], run["tool_calls"],
+                 run["retrieval_attempts"], run["documents_examined"], run["evidence_count"], run["critic_score"],
+                 run["latency_ms"], metadata, run["created_at"]))
+    except Exception:
+        pass
     return {"risks": risks, "disclaimer": "AI risk analysis assists human review and is not legal or compliance advice."}
 
 
@@ -77,22 +80,30 @@ def semantic_compare(request: CompareAgentRequest) -> dict:
         "risks": [risk.model_dump() for risk in risks], "citations": citations}
 
 
-@router.post("/agents/analytics", tags=["Agents"])
-def analytics_agent(request: AnalyticsAgentRequest) -> dict:
-    return answer_analytics(request.question)
-
-
 @router.get("/agents/runs", tags=["Agents"])
 def list_runs() -> list[dict]:
-    with connection() as db:
-        rows = db.execute("SELECT * FROM agent_runs ORDER BY created_at DESC LIMIT 100").fetchall()
-    return [dict(row) for row in rows]
+    stored: list[dict] = []
+    try:
+        with connection() as db:
+            stored = [dict(row) for row in db.execute("SELECT * FROM agent_runs ORDER BY created_at DESC LIMIT 100").fetchall()]
+    except Exception:
+        pass
+    combined = {item["id"]: item for item in [*recent_runs(), *stored]}
+    return sorted(combined.values(), key=lambda item: str(item["created_at"]), reverse=True)[:100]
 
 
 @router.get("/agents/runs/{run_id}", tags=["Agents"])
 def get_run(run_id: str) -> dict:
-    with connection() as db:
-        row = db.execute("SELECT * FROM agent_runs WHERE id=?", (run_id,)).fetchone()
+    row = None
+    try:
+        with connection() as db:
+            row = db.execute("SELECT * FROM agent_runs WHERE id=?", (run_id,)).fetchone()
+    except Exception:
+        pass
+    if not row:
+        fallback = next((item for item in recent_runs() if item["id"] == run_id), None)
+        if fallback:
+            return fallback
     if not row:
         raise HTTPException(404, "Agent run not found")
     return dict(row)
@@ -114,40 +125,6 @@ def document_intelligence(document_id: str) -> dict:
 def document_risks(document_id: str) -> dict:
     return {"risks": analyze_risks(retrieve("risk penalty obligation deadline prohibited", [document_id])),
         "disclaimer": "AI risk analysis assists human review and is not legal or compliance advice."}
-
-
-@router.get("/insights", tags=["Insights"])
-def insights() -> list[dict]:
-    with connection() as db:
-        documents = db.execute("SELECT id,name,department,content FROM documents ORDER BY created_at DESC LIMIT 20").fetchall()
-    output = []
-    for document in documents:
-        risks = analyze_risks(retrieve("risk penalty obligation deadline", [str(document["id"])]))
-        if risks:
-            risk = risks[0]
-            output.append({"category": "Risk", "title": risk.title, "description": risk.description,
-                "severity": risk.severity, "evidence": risk.evidence, "document_id": str(document["id"]), "document_name": document["name"]})
-    return output[:12]
-
-
-@router.get("/knowledge-map", tags=["Insights"])
-def knowledge_map() -> dict:
-    with connection() as db:
-        documents = db.execute("SELECT id,name,department FROM documents").fetchall()
-        profiles = db.execute("SELECT document_id,topics,entities,risks FROM document_intelligence").fetchall()
-    nodes, links = [], []
-    seen = set()
-    for doc in documents:
-        doc_id = str(doc["id"]); nodes.append({"id": doc_id, "label": doc["name"], "type": "document"}); seen.add(doc_id)
-        dept_id = f"department:{doc['department']}"
-        if dept_id not in seen: nodes.append({"id": dept_id, "label": doc["department"], "type": "department"}); seen.add(dept_id)
-        links.append({"source": doc_id, "target": dept_id})
-    for profile in profiles:
-        for topic in (json.loads(profile["topics"]) if isinstance(profile["topics"], str) else profile["topics"])[:6]:
-            node_id = f"topic:{topic}"
-            if node_id not in seen: nodes.append({"id": node_id, "label": topic, "type": "topic"}); seen.add(node_id)
-            links.append({"source": str(profile["document_id"]), "target": node_id})
-    return {"nodes": nodes, "links": links}
 
 
 @router.post("/conversations", status_code=201, tags=["Conversations"])
@@ -192,5 +169,9 @@ def delete_conversation(conversation_id: str) -> None:
 def review(request: ReviewRequest) -> dict:
     item = {"id": str(uuid.uuid4()), "analysis_id": request.analysis_id, "status": "completed",
         "reviewer_action": request.action, "comment": request.comment, "created_at": now_iso()}
-    with connection() as db: db.execute("INSERT INTO ai_reviews VALUES (?, ?, ?, ?, ?, ?)", tuple(item.values()))
+    remember_review(item)
+    try:
+        with connection() as db: db.execute("INSERT INTO ai_reviews VALUES (?, ?, ?, ?, ?, ?)", tuple(item.values()))
+    except Exception:
+        pass
     return item

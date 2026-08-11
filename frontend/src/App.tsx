@@ -4,7 +4,7 @@ import { MetricCard } from './components/MetricCard'
 import { PageName, Sidebar } from './components/Sidebar'
 import { Analytics, askQuestion, ChatResult, compareDocuments, deleteDocument, DocumentDetail, DocumentItem, getAnalytics, getDocument, listDocuments, uploadDocument } from './services/api'
 import { useHealth } from './hooks/useHealth'
-import { InsightsPage, MapPage, ResearchPage, RiskPage, RunsPage } from './components/AgentPages'
+import { RiskPage, RunsPage } from './components/AgentPages'
 
 function Header({title,onUpload}:{title:string;onUpload:()=>void}){return <header className="topbar"><div><p className="eyebrow">ENTERPRISE KNOWLEDGE</p><h1>{title}</h1><p>Search, understand, and govern your organization’s knowledge.</p></div><div className="top-actions"><button className="search-btn"><Search size={18}/><span>Search anything</span></button><button onClick={onUpload} className="primary"><Upload size={17}/>Upload document</button></div></header>}
 
@@ -41,6 +41,6 @@ function Dashboard({stats,openAssistant}:{stats:Analytics;openAssistant:()=>void
 export default function App(){
  const [page,setPage]=useState<PageName>('Dashboard'),[documents,setDocuments]=useState<DocumentItem[]>([]),[stats,setStats]=useState<Analytics>({total_documents:0,indexed_documents:0,total_queries:0,successful_answers:0,average_response_time_ms:0}),[uploader,setUploader]=useState(false);const {health,error}=useHealth()
  const reload=()=>{listDocuments().then(setDocuments).catch(()=>setDocuments([]));getAnalytics().then(setStats).catch(()=>undefined)};useEffect(reload,[])
- const content=page==='Dashboard'?<Dashboard stats={stats} openAssistant={()=>setPage('AI Assistant')}/>:page==='Documents'?<Documents items={documents} reload={reload}/>:page==='AI Assistant'?<Assistant documents={documents}/>:page==='Compare Documents'?<Compare documents={documents}/>:page==='AI Research'?<ResearchPage documents={documents}/>:page==='AI Insights'?<InsightsPage/>:page==='Risk Analysis'?<RiskPage documents={documents}/>:page==='Knowledge Map'?<MapPage/>:<RunsPage/>
+ const content=page==='Dashboard'?<Dashboard stats={stats} openAssistant={()=>setPage('AI Assistant')}/>:page==='Documents'?<Documents items={documents} reload={reload}/>:page==='AI Assistant'?<Assistant documents={documents}/>:page==='Compare Documents'?<Compare documents={documents}/>:page==='Risk Analysis'?<RiskPage documents={documents}/>:<RunsPage/>
  return <div className="app-shell"><Sidebar page={page} onChange={setPage}/><main><Header title={page} onUpload={()=>setUploader(true)}/><section className="status-banner"><span className={`pulse ${health?'online':error?'offline':''}`}/><div><strong>{health?'Backend connected':error?'Backend unavailable':'Connecting…'}</strong><small>{health?`API v${health.version} · ${documents.length} documents indexed`:error}</small></div></section>{content}</main>{uploader&&<UploadDialog close={()=>setUploader(false)} done={reload}/>}</div>
 }

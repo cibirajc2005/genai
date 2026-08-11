@@ -10,30 +10,6 @@ class ResearchRequest(BaseModel):
     conversation_id: str | None = None
 
 
-class ResearchStep(BaseModel):
-    order: int
-    name: str
-    status: Literal["pending", "completed", "skipped"] = "pending"
-
-
-class Evidence(BaseModel):
-    document_id: str
-    document_name: str
-    chunk_id: str
-    excerpt: str
-    score: float
-    verified: bool = False
-
-
-class CriticResult(BaseModel):
-    passed: bool
-    score: float
-    unsupported_claims: list[str] = Field(default_factory=list)
-    missing_citations: list[str] = Field(default_factory=list)
-    contradictions: list[str] = Field(default_factory=list)
-    recommendation: Literal["accept", "retry_retrieval", "regenerate", "insufficient_evidence"]
-
-
 class Risk(BaseModel):
     title: str
     severity: Literal["LOW", "MEDIUM", "HIGH", "CRITICAL"]
@@ -43,18 +19,6 @@ class Risk(BaseModel):
     recommendation: str
 
 
-class ResearchResult(BaseModel):
-    run_id: str
-    conversation_id: str
-    status: str
-    plan: list[ResearchStep]
-    answer: str
-    evidence: list[Evidence]
-    risks: list[Risk]
-    critic: CriticResult
-    disclaimer: str | None = None
-
-
 class CompareAgentRequest(BaseModel):
     document_a_id: str
     document_b_id: str
@@ -62,10 +26,6 @@ class CompareAgentRequest(BaseModel):
 
 class AnalyzeDocumentRequest(BaseModel):
     document_id: str
-
-
-class AnalyticsAgentRequest(BaseModel):
-    question: str = Field(min_length=2, max_length=500)
 
 
 class ReviewRequest(BaseModel):

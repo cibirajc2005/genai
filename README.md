@@ -71,9 +71,8 @@ AGENT_MAX_RETRIEVAL_RETRIES=2
 AGENT_MAX_TOOL_CALLS=10
 ```
 
-Agentic features add research planning, evidence retry and verification, risk analysis,
-executive insights, a knowledge map, safe analytics templates, human review actions,
-and execution observability. Existing chat and document APIs remain unchanged.
+Optional agent features add evidence-based risk analysis, human review actions, and
+execution observability. Existing chat and document APIs remain unchanged.
 
 ## Store documents and comparisons in Supabase
 

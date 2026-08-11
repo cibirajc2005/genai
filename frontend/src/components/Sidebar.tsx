@@ -1,13 +1,12 @@
-import { Activity, BookOpen, Bot, FileStack, Gauge, Library, Lightbulb, Network, SearchCheck, ShieldAlert } from 'lucide-react'
+import { Activity, BookOpen, Bot, FileStack, Gauge, Library, ShieldAlert } from 'lucide-react'
 
 const navigation = [
   [Gauge, 'Dashboard', true], [Bot, 'AI Assistant', false], [FileStack, 'Documents', false],
   [BookOpen, 'Compare Documents', false],
-  [SearchCheck, 'AI Research', false], [Lightbulb, 'AI Insights', false],
-  [ShieldAlert, 'Risk Analysis', false], [Network, 'Knowledge Map', false], [Activity, 'Agent Runs', false],
+  [ShieldAlert, 'Risk Analysis', false], [Activity, 'Agent Runs', false],
 ] as const
 
-export type PageName = 'Dashboard'|'AI Assistant'|'Documents'|'Compare Documents'|'AI Research'|'AI Insights'|'Risk Analysis'|'Knowledge Map'|'Agent Runs'
+export type PageName = 'Dashboard'|'AI Assistant'|'Documents'|'Compare Documents'|'Risk Analysis'|'Agent Runs'
 export function Sidebar({page,onChange}:{page:PageName;onChange:(page:PageName)=>void}) {
   return <aside className="sidebar">
     <div className="brand"><span className="brand-mark"><Library size={20}/></span><div><strong>Knowledge Hub</strong><small>Document Assistant</small></div></div>

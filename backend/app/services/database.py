@@ -130,11 +130,6 @@ def initialize_database() -> None:
           id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL, summary TEXT NOT NULL,
           entities TEXT NOT NULL, selected_documents TEXT NOT NULL, created_at TEXT NOT NULL
         );
-        CREATE TABLE IF NOT EXISTS insights (
-          id TEXT PRIMARY KEY, category TEXT NOT NULL, title TEXT NOT NULL,
-          description TEXT NOT NULL, severity TEXT NOT NULL, evidence TEXT NOT NULL,
-          document_id TEXT, created_at TEXT NOT NULL
-        );
         """)
         # Backfill vectors for documents uploaded before chunk storage existed.
         missing = db.execute("""SELECT d.id,d.content,d.created_at FROM documents d

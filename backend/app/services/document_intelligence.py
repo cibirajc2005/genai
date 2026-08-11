@@ -23,22 +23,29 @@ def build_profile(document_id: str, text: str, name: str, department: str = "Gen
         "important_dates": dates, "obligations": obligations, "risks": risks, "action_items": actions,
         "keywords": topics, "sensitivity_level": "Review required" if risks else "Standard"}
     timestamp = now_iso()
-    with connection() as db:
-        db.execute("DELETE FROM document_intelligence WHERE document_id=?", (document_id,))
-        values = [topics, entities, dates, obligations, risks, actions]
-        if db.postgres:
-            from psycopg.types.json import Jsonb
-            values = [Jsonb(value) for value in values]
-        else:
-            values = [json.dumps(value) for value in values]
-        db.execute("INSERT INTO document_intelligence VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (str(uuid.uuid4()), document_id, profile["summary"], doc_type, *values, timestamp, timestamp))
+    try:
+        with connection() as db:
+            db.execute("DELETE FROM document_intelligence WHERE document_id=?", (document_id,))
+            values = [topics, entities, dates, obligations, risks, actions]
+            if db.postgres:
+                from psycopg.types.json import Jsonb
+                values = [Jsonb(value) for value in values]
+            else:
+                values = [json.dumps(value) for value in values]
+            db.execute("INSERT INTO document_intelligence VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (str(uuid.uuid4()), document_id, profile["summary"], doc_type, *values, timestamp, timestamp))
+    except Exception:
+        # Intelligence remains available in the response before migrations run.
+        pass
     return profile
 
 
 def get_profile(document_id: str) -> dict | None:
-    with connection() as db:
-        row = db.execute("SELECT * FROM document_intelligence WHERE document_id=?", (document_id,)).fetchone()
+    try:
+        with connection() as db:
+            row = db.execute("SELECT * FROM document_intelligence WHERE document_id=?", (document_id,)).fetchone()
+    except Exception:
+        return None
     if not row:
         return None
     result = dict(row)
