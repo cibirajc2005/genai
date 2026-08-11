@@ -24,7 +24,7 @@ def local_embedding(text: str) -> list[float]:
 
 class EmbeddingService:
     def embed(self, texts: list[str]) -> tuple[list[list[float]], str]:
-        if settings.openai_api_key and settings.openai_embedding_model:
+        if settings. and settings.openai_embedding_model:
             try:
                 response = OpenAI(api_key=settings.openai_api_key).embeddings.create(
                     model=settings.openai_embedding_model, input=texts
